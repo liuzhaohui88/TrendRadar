@@ -1,0 +1,8 @@
+
+# Nina extension
+__pycache__/
+*.pyc
+*.db
+output/
+.env
+node_modules/

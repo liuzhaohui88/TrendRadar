@@ -1,0 +1,51 @@
+# TrendRadar Nina 扩展版 Dockerfile
+# 基于官方 v5.5.0 + Web 管理后台
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 换成阿里云镜像源（国内服务器必备）
+RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list 2>/dev/null || true
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 配置 pip 国内镜像源
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip config set global.trusted-host mirrors.aliyun.com
+
+# 复制依赖文件
+COPY pyproject.toml requirements.txt ./
+
+# 直接用 pip 安装依赖（不用 uv，简化构建）
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir fastapi uvicorn sqlmodel aiofiles python-multipart
+
+# 复制项目代码
+COPY . .
+
+# 复制前端构建产物
+COPY frontend/dist /app/frontend/dist
+
+# 创建数据目录
+RUN mkdir -p /app/output /app/config
+
+# 环境变量
+ENV PYTHONUNBUFFERED=1
+ENV TZ=Asia/Shanghai
+ENV ADMIN_USER=admin
+ENV ADMIN_PASSWORD=trendradar
+
+# 暴露端口
+EXPOSE 8000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# 启动命令
+CMD ["uvicorn", "trendradar.api.app:app", "--host", "0.0.0.0", "--port", "8000"]

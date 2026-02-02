@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  trendradar-nina:
+    build:
+      context: .
+      dockerfile: Dockerfile.nina
+    image: trendradar-nina:5.5.0
+    container_name: trendradar-nina
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config
+      - ./output:/app/output
+    environment:
+      - TZ=Asia/Shanghai
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-trendradar}
+      # AI 配置（可选）
+      - AI_API_KEY=${AI_API_KEY:-}
+      # 通知配置（可选，也可在 Web 界面配置）
+      - FEISHU_WEBHOOK_URL=${FEISHU_WEBHOOK_URL:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# 使用方法：
+# 1. 构建并启动：docker compose -f docker-compose.nina.yml up -d --build
+# 2. 查看日志：docker compose -f docker-compose.nina.yml logs -f
+# 3. 停止：docker compose -f docker-compose.nina.yml down
